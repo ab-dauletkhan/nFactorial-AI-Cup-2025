@@ -1,49 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import InputColumn from './InputColumn';
 import OutputColumn from './OutputColumn';
-import { socket } from '../socket'; // Import the socket instance
-// import '../styles/Layout.css'; // We can create this later if needed
+import { socket } from '../socket';
+import './Layout.css';
 
 const Layout: React.FC = () => {
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
+  const [outputLanguage, setOutputLanguage] = useState<string>('es');
+
+  const connectSocket = useCallback(() => {
+    if (!socket.connected) {
+      console.log('Layout: Attempting to connect socket...');
+      socket.connect();
+    }
+  }, []);
+
+  const handleTextChange = useCallback((text: string, languages: string[]) => {
+    // This can be used for additional logic when text changes
+    console.log('Text changed:', { text, languages });
+  }, []);
+
+  const handleLanguageChange = useCallback((language: string) => {
+    setOutputLanguage(language);
+    // Here you could emit to server to change translation target language
+  }, []);
 
   useEffect(() => {
-    function connectSocket() {
-      if (!socket.connected) {
-        console.log('Layout: Attempting to connect socket...');
-        socket.connect();
-      }
-    }
-
     connectSocket();
 
-    function onConnect() {
+    const onConnect = () => {
       setIsConnected(true);
       console.log('Layout: Socket connected successfully', socket.id);
-    }
+    };
 
-    function onDisconnect(reason: string) {
+    const onDisconnect = (reason: string) => {
       setIsConnected(false);
       console.log('Layout: Socket disconnected', reason);
-      if (reason === 'io server disconnect') {
-        // socket.connect(); // Or implement a more robust reconnection strategy
-      }
-    }
+    };
 
-    function onReceiveTranslation(text: string) {
+    const onReceiveTranslation = (text: string) => {
       setTranslatedText(text);
-    }
+    };
 
-    function onTranslationError(errorMsg: string) {
+    const onTranslationError = (errorMsg: string) => {
       console.error('Layout: Translation error from server:', errorMsg);
       setTranslatedText(`Error: ${errorMsg}`);
-    }
+    };
 
-    function onConnectError(error: Error) {
+    const onConnectError = (error: Error) => {
       console.error('Layout: Socket connection error:', error);
       setIsConnected(false);
-    }
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -59,14 +67,23 @@ const Layout: React.FC = () => {
       socket.off('translationError', onTranslationError);
       socket.off('connect_error', onConnectError);
     };
-  }, []);
+  }, [connectSocket]);
 
   return (
-    <div className="layout-container" style={{ display: 'flex', gap: '20px', padding: '20px' }}>
-      <InputColumn />
-      <OutputColumn translatedText={translatedText} />
-    </div>
+    <>
+      <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+        {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+      </div>
+      
+      <div className="layout-container">
+        <InputColumn onTextChange={handleTextChange} />
+        <OutputColumn 
+          translatedText={translatedText} 
+          onLanguageChange={handleLanguageChange}
+        />
+      </div>
+    </>
   );
 };
 
-export default Layout; 
+export default Layout;

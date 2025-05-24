@@ -1,38 +1,50 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
+import { LANGUAGES } from '../constants/languages';
+import './OutputColumn.css';
 
 interface OutputColumnProps {
   translatedText: string;
+  onLanguageChange?: (language: string) => void;
 }
 
-const OutputColumn: React.FC<OutputColumnProps> = ({ translatedText }) => {
-  // const [outputLanguage, setOutputLanguage] = useState<string>('es'); // For future use
+const OutputColumn: React.FC<OutputColumnProps> = ({ 
+  translatedText, 
+  onLanguageChange 
+}) => {
+  const [outputLanguage, setOutputLanguage] = useState<string>(LANGUAGES[1]?.code || 'es');
 
-  // const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-  //   setOutputLanguage(event.target.value);
-  //   // Potentially notify backend or re-request translation if language change affects output directly
-  // };
+  const handleLanguageChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLanguage = event.target.value;
+    setOutputLanguage(newLanguage);
+    onLanguageChange?.(newLanguage);
+    console.log("Output language changed to:", newLanguage);
+  }, [onLanguageChange]);
 
   return (
-    <div className="column output-column" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div className="column output-column">
       <h2>Output</h2>
-      <div className="language-selector" style={{ marginBottom: '15px' }}>
-        <label htmlFor="output-lang" style={{ marginRight: '8px', fontWeight: 'bold' }}>Output Language: </label>
-        <select id="output-lang" defaultValue="es" /* onChange={handleLanguageChange} */ style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '0.9rem' }}>
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="it">Italian</option>
+      
+      <div className="output-language-selector">
+        <label htmlFor="output-lang">Output Language:</label>
+        <select 
+          id="output-lang" 
+          value={outputLanguage} 
+          onChange={handleLanguageChange}
+          className="output-language-select"
+        >
+          {LANGUAGES.map(lang => (
+            <option key={lang.code} value={lang.code}>
+              {lang.name}
+            </option>
+          ))}
         </select>
       </div>
-      <div 
-        className="column-output" 
-        style={{ flexGrow: 1, whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontSize: '1rem', border: '1px solid #eee', padding: '10px', borderRadius: '4px', backgroundColor: '#f9f9f9' }}
-      >
+      
+      <div className="output-display">
         {translatedText || "Translation will appear here..."}
       </div>
     </div>
   );
 };
 
-export default OutputColumn; 
+export default OutputColumn;

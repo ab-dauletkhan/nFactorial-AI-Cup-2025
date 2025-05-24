@@ -1,22 +1,27 @@
 /* Global Resets and Base Styles */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f4f7f6; /* Light gray background */
-  color: #333; /* Default text color */
+  background-color: #f0f2f5; /* Slightly cooler light gray background */
+  color: #1a202c; /* Darker, more modern text color */
   line-height: 1.6;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; /* Modern monospace fonts */
+  background-color: #edf2f7; /* Light background for code blocks */
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -30,63 +35,63 @@ code {
 /* Main App Styling */
 .App {
   text-align: center;
-  padding: 20px;
+  padding: 0; /* Removed padding, handle in Layout or specific components */
+  display: flex; /* Added to enable flex for Layout */
+  flex-direction: column; /* Added for Layout */
+  flex-grow: 1; /* Added for Layout */
 }
 
 .App-header {
-  background-color: #282c34; /* Dark header */
-  padding: 20px;
-  color: white;
-  margin-bottom: 20px;
-  border-radius: 8px;
+  background-color: #ffffff; /* White header for a cleaner look */
+  color: #1a202c; /* Dark text for header */
+  padding: 20px 30px; /* Adjusted padding */
+  margin-bottom: 0; /* Remove bottom margin, handle spacing in Layout */
+  border-bottom: 1px solid #e2e8f0; /* Subtle border for header */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03); /* Softer shadow */
+  text-align: left; /* Align header text to the left */
 }
 
 .App-header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.75rem; /* Slightly smaller, more modern H1 */
+  font-weight: 600; /* Semi-bold for a modern feel */
 }
 
-/* General Styles for Columns */
-.column {
-  padding: 20px;
-  border: 1px solid #ddd; /* Light border for columns */
-  background-color: #fff; /* White background for columns */
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
-  height: 400px; /* Fixed height for demonstration, can be adjusted */
-  overflow-y: auto; /* Scroll if content overflows */
-}
+/* General Styles for Columns - These are now primarily in App.css */
+/* .column styles have been moved to App.css for better component-level styling */
 
-textarea.column-textarea {
+/* textarea and output styles are now primarily in App.css */
+
+/* Language Selector styles are now primarily in App.css */
+
+/* Utility classes (optional, can be expanded) */
+.container {
   width: 100%;
-  height: calc(100% - 40px); /* Adjust based on padding or other elements */
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1rem;
-  resize: none; /* Disable manual resize by user */
-  font-family: inherit;
+  max-width: 1400px; /* Wider max-width for modern layouts */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
-.column-output {
-  white-space: pre-wrap; /* Preserve whitespace and newlines */
-  word-wrap: break-word; /* Break long words */
-  font-size: 1rem;
+/* Styling for the main content layout (e.g., where columns sit) */
+.main-content {
+  display: flex;
+  flex-grow: 1;
+  padding: 20px; /* Add padding around the columns area */
+  gap: 20px; /* Space between columns */
+  background-color: #f0f2f5; /* Match body background or a slightly different shade */
 }
 
-/* Language Selector (Optional Placeholder) */
-.language-selector {
-  margin-bottom: 15px;
+/* Ensure the main layout inside App component takes full height if needed */
+/* This might be part of a Layout.tsx component */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-.language-selector label {
-  margin-right: 8px;
-  font-weight: bold;
-}
-
-.language-selector select {
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 0.9rem;
+.content-wrap {
+  flex-grow: 1;
+  display: flex; /* This will make children (like main-content) also flexible */
 }

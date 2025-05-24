@@ -21,14 +21,23 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  socket.on('sendText', (text) => {
-    // console.log(`Received text from ${socket.id}:`, text); // Optional: log received text
+  socket.on('sendText', (data) => {
+    console.log(`Received data from ${socket.id}:`, data);
     try {
-      const translatedText = mockTranslate(text);
+      // Extract text from the data object
+      const textToTranslate = typeof data === 'string' ? data : data.text;
+      const languages = typeof data === 'object' ? data.languages : [];
+      
+      if (!textToTranslate) {
+        socket.emit('receiveTranslation', '');
+        return;
+      }
+      
+      const translatedText = mockTranslate(textToTranslate);
       socket.emit('receiveTranslation', translatedText);
     } catch (error) {
       console.error('Translation error:', error);
-      socket.emit('translationError', 'Failed to translate text.'); // Optional: send error to client
+      socket.emit('translationError', 'Failed to translate text.');
     }
   });
 
@@ -43,4 +52,4 @@ io.on('connection', (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`Server listening on *:${PORT}`);
-}); 
+});
