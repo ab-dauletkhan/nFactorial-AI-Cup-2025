@@ -1,9 +1,17 @@
 import OpenAI from 'openai';
-import { OPENAI_API_KEY } from './config.js';
+import { OPENAI_API_KEY, NOTATION_API_KEY, NOTATION_API_BASE_URL } from './config.js';
 
-const openai = OPENAI_API_KEY ? new OpenAI({
-  apiKey: OPENAI_API_KEY,
+// Client for general translation tasks
+const translateOpenai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
+// Client for language notation (mapping) tasks
+const notationOpenai = NOTATION_API_KEY ? new OpenAI({
+  apiKey: NOTATION_API_KEY,
+  baseURL: NOTATION_API_BASE_URL, // If NOTATION_API_BASE_URL is undefined, OpenAI client defaults to official one
 }) : null;
+
+const DEFAULT_LANGUAGE_MODEL = 'gpt-3.5-turbo';
+const MAPPING_MODEL = 'gpt-3.5-turbo'; // Or could be a different model if notation service prefers
 
 interface TranslationRequest {
   text: string;
@@ -17,53 +25,39 @@ interface TranslationRequest {
  * @param userLanguages - User-specified languages or ['auto']
  * @returns Language-mapped text with [[LANG]] tags
  */
-export async function mapLanguages(text: string, userLanguages: string[]): Promise<string> {
-  if (!openai) {
-    // Mock language mapping for development
-    return `[[EN]]${text}`;
+export async function mapLanguages(text: string, languages: string[]): Promise<string> {
+  if (!notationOpenai) {
+    console.warn('Notation API key not set. Using mock language mapping.');
+    if (text.includes('[[') && text.includes(']]S')) return text; // Already tagged
+    return `[[EN]]${text}`; // Simple mock: tag everything as English
   }
 
-  const isAutoDetect = userLanguages.includes('auto') || userLanguages.length === 0;
+  const systemPrompt = `You are a language mapping expert. Your task is to identify all languages present in the given text and enclose each segment in tags like [[XX]] where XX is the uppercase ISO 639-1 language code (e.g., [[EN]], [[ES]], [[ZH]]) or ISO 639-1 code followed by a region/dialect if applicable (e.g., [[EN:GB]], [[PT:BR]]). If a language is specified in the languages array, prioritize it for ambiguous segments. If languages array is ['auto'], perform auto-detection for all segments. Do not translate the text. Only add the language tags. If the text is already correctly and fully tagged, return it as is. If parts are tagged and parts are not, tag only the untagged parts. If multiple languages are clearly present, use tags for each. For very short, ambiguous, or proper nouns that could belong to multiple requested languages, use the first language in the provided list, or [[UND]] if truly undeterminable. Output ONLY the tagged text.`;
   
-  let prompt: string;
-  
-  if (isAutoDetect) {
-    prompt = `Analyze the following text and tag each language segment with [[LANG]] where LANG is the ISO 639-1 two-letter code. Use these rules:
-- Tag before each segment where language changes
-- Group largest possible segments (phrases/clauses) of same language
-- Use [[UNK]] for unidentifiable segments
-- Use [[AMB:lang1/lang2]] for ambiguous segments
+  const userPrompt = `Text to map:
+"${text}"
 
-Text: "${text}"
+Languages to prioritize (or 'auto' for full detection): ${JSON.stringify(languages)}
 
-Return only the tagged text:`;
-  } else {
-    const langList = userLanguages.join(', ');
-    prompt = `Analyze the following text and tag each language segment with [[LANG]] where LANG is the ISO 639-1 two-letter code. The user specified these languages: ${langList}. Prioritize these languages when resolving ambiguities.
-
-Use these rules:
-- Tag before each segment where language changes
-- Group largest possible segments (phrases/clauses) of same language
-- Prioritize user-specified languages: ${langList}
-- Use [[UNK]] for unidentifiable segments
-
-Text: "${text}"
-
-Return only the tagged text:`;
-  }
+Return only the text with language tags.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 1000,
+    const response = await notationOpenai.chat.completions.create({
+      model: MAPPING_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
       temperature: 0.1,
+      max_tokens: text.length + languages.length * 10 + 50, // Estimate tokens
     });
-
-    return response.choices[0]?.message?.content?.trim() || text;
+    // Use optional chaining and nullish coalescing for safer access
+    return response.choices?.[0]?.message?.content ?? text;
   } catch (error) {
-    console.error('Language mapping error:', error);
-    return `[[EN]]${text}`; // Fallback
+    console.error("Error mapping languages with notation service:", error);
+    // Fallback to simple mock if API fails
+    if (text.includes('[[') && text.includes(']]S')) return text;
+    return `[[EN]]${text} [[ERROR_LANG_MAP]]`; 
   }
 }
 
@@ -73,59 +67,84 @@ Return only the tagged text:`;
  * @param targetLanguage - Target language code
  * @returns Translated text
  */
-export async function translateText(mappedText: string, targetLanguage: string): Promise<string> {
-  if (!openai) {
-    // Mock translation for development
-    return `[MOCK TRANSLATION TO ${targetLanguage.toUpperCase()}] ${mappedText}`;
+export async function translateText(text: string, targetLanguage: string, sourceLanguages: string[] = ['auto']): Promise<string> {
+  if (!translateOpenai) {
+    console.warn('OpenAI API key for translation not set. Using mock translation.');
+    return `[MOCK TRANSLATION TO ${targetLanguage.toUpperCase()}] ${mockTranslate(text)}`;
   }
 
-  const prompt = `Translate the following language-tagged text to ${targetLanguage}. The text contains language tags in [[LANG]] format. Translate each segment according to its language tag and provide a natural, fluent translation in ${targetLanguage}.
+  const systemPrompt = `You are a an expert polyglot translator. Your task is to translate the given text accurately into the specified target language. The input text may contain segments in different languages, clearly demarcated by tags like [[XX]] or [[XX:YY]] (e.g., [[EN]] for English, [[ES:MX]] for Mexican Spanish). Translate each segment into the target language, preserving the overall meaning and flow. Maintain the original structure as much as possible. If specific source languages are hinted by the [[LANG_CODE]] tags, use them to resolve ambiguities if any. If the input already contains [[${targetLanguage.toUpperCase()}]] tags, ensure those segments are correctly in the target language or translate them if they are not. Output ONLY the translated text, without any tags unless they were part of the original untranslatable content (e.g. code snippets, proper nouns that should not be translated AND were tagged). Remove all language identification tags like [[XX]] from your final output.`;
+  
+  const userPrompt = `Source text (mixed languages, pay attention to tags):
+"${text}"
 
-Tagged text: "${mappedText}"
+Target language: ${targetLanguage}
+Source languages hint: ${sourceLanguages.join(', ')}
 
-Return only the translated text in ${targetLanguage}:`;
+Return only the translated text.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 1000,
-      temperature: 0.3,
+    const response = await translateOpenai.chat.completions.create({
+      model: DEFAULT_LANGUAGE_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: Math.floor(text.length * 2.5) + 50, // Adjusted token estimation
     });
-
-    return response.choices[0]?.message?.content?.trim() || mappedText;
+    // Use optional chaining and nullish coalescing for safer access
+    return response.choices?.[0]?.message?.content ?? `[TRANSLATION_ERROR_EMPTY_RESPONSE: ${targetLanguage.toUpperCase()}] ${mockTranslate(text)}`;
   } catch (error) {
-    console.error('Translation error:', error);
-    throw new Error('Translation failed');
+    console.error("Error translating text with OpenAI:", error);
+    return `[TRANSLATION_ERROR: ${targetLanguage.toUpperCase()}] ${mockTranslate(text)}`;
   }
 }
 
 /**
  * Main translation function that handles the complete process
  * @param request - Translation request object
- * @returns Translated text
+ * @returns An object containing the mapped (annotated) text and the translated text
  */
-export async function processTranslation(request: TranslationRequest): Promise<string> {
-  const { text, languages, targetLanguage } = request;
-  
-  if (!text || text.trim() === '') {
-    return '';
-  }
+export async function processTranslation(data: { text: string; languages: string[]; targetLanguage: string; }): Promise<{ mappedText: string; translatedText: string; detectedSourceLanguages: string[]; }> {
+  const { text, languages, targetLanguage } = data;
 
-  try {
-    // Step 1: Map languages in the text
-    const mappedText = await mapLanguages(text, languages);
-    console.log('Mapped text:', mappedText);
-    
-    // Step 2: Translate to target language
-    const translatedText = await translateText(mappedText, targetLanguage);
-    console.log('Translated text:', translatedText);
-    
-    return translatedText;
-  } catch (error) {
-    console.error('Translation process error:', error);
-    throw error;
+  let mappedText = text;
+  if (!text.includes('[[') || !text.includes(']]S')) { 
+    mappedText = await mapLanguages(text, languages.length > 0 && languages[0] !== 'auto' ? languages : ['auto']);
+  } else {
+    mappedText = text.replace(/\[\[([a-zA-Z]{2,3}(?::[a-zA-Z0-9_-]+)?)\]\]/g, (matchFull: string, langCode: string) => {
+      return `[[${langCode.toUpperCase()}]]`;
+    });
   }
+  
+  const detectedSourceLanguages = parseLanguagesFromMappedText(mappedText);
+
+  // Use the new translateText function with its own client
+  const translatedText = await translateText(mappedText, targetLanguage, detectedSourceLanguages);
+
+  return {
+    mappedText,
+    translatedText,
+    detectedSourceLanguages
+  };
+}
+
+/**
+ * Parses language codes from a text string containing [[LANG]] tags.
+ * @param mappedText Text with language tags (e.g., "[[EN]]Hello [[ES]]mundo")
+ * @returns An array of unique language codes found (e.g., ["EN", "ES"])
+ */
+export function parseLanguagesFromMappedText(mappedText: string): string[] {
+  const regex = /\[\[([A-Z]{2,3}(?::[A-Z0-9_-]+)?)\]\]/g;
+  const languages = new Set<string>();
+  let match;
+  while ((match = regex.exec(mappedText)) !== null) {
+    if (match[1]) {
+      languages.add(match[1]);
+    }
+  }
+  return Array.from(languages);
 }
 
 /**
@@ -133,9 +152,6 @@ export async function processTranslation(request: TranslationRequest): Promise<s
  * @param text - The text to translate
  * @returns Mock translated text
  */
-export const mockTranslate = (text: string): string => {
-  if (typeof text !== 'string') {
-    return '';
-  }
-  return `[MOCK] ${text.split('').reverse().join('')}`;
-};
+export function mockTranslate(text: string): string {
+  return `Mocked: ${text.substring(0, 50)}...`;
+}

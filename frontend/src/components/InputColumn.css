@@ -13,8 +13,14 @@
   padding-bottom: 10px;
 }
 
-.language-selector {
+.input-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
   margin-bottom: 15px;
+}
+
+.language-selector {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -69,6 +75,122 @@
 
 .add-language-btn:hover {
   background-color: #0056b3;
+}
+
+.verbose-mode-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.verbose-mode-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #4A5568;
+}
+
+.verbose-mode-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.toggle-label {
+  user-select: none;
+}
+
+.input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  flex-grow: 1;
+}
+
+.input-textarea {
+  flex-grow: 1;
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  line-height: 1.6;
+  background-color: #f9fafb;
+  resize: none;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  min-height: 150px;
+}
+
+.input-textarea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+.highlighted-preview {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  min-height: 100px;
+}
+
+.preview-label {
+  font-weight: 600;
+  color: #4A5568;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.preview-content {
+  line-height: 1.6;
+  font-size: 1rem;
+  word-wrap: break-word;
+}
+
+.language-list {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.language-list-label {
+  font-weight: 600;
+  color: #4A5568;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.language-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.language-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.language-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid #d1d5db;
+}
+
+.language-code {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #2d3748;
 }
 
 .language-modal {
@@ -134,21 +256,41 @@
   background-color: #5a6268;
 }
 
-.input-textarea {
-  flex-grow: 1;
-  width: 100%;
-  padding: 15px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  line-height: 1.6;
-  background-color: #f9fafb;
-  resize: none;
-  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+.input-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.input-textarea:focus {
+.mic-button {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  color: #555;
+}
+
+.mic-button:hover {
   border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-  outline: none;
+  color: #007bff;
+}
+
+.mic-button.recording svg {
+  /* SVG already has fill="red" for RecordingIcon component */
+}
+
+.mic-button.transcribing {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.mic-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

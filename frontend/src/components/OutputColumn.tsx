@@ -5,11 +5,23 @@ import './OutputColumn.css';
 interface OutputColumnProps {
   translatedText: string;
   onLanguageChange?: (language: string) => void;
+  isLoading?: boolean;
 }
+
+const LoadingDots: React.FC = () => {
+  return (
+    <div className="loading-dots">
+      <span className="dot"></span>
+      <span className="dot"></span>
+      <span className="dot"></span>
+    </div>
+  );
+};
 
 const OutputColumn: React.FC<OutputColumnProps> = ({ 
   translatedText, 
-  onLanguageChange 
+  onLanguageChange,
+  isLoading = false
 }) => {
   const [outputLanguage, setOutputLanguage] = useState<string>(DEFAULT_OUTPUT_LANGUAGE);
 
@@ -22,7 +34,10 @@ const OutputColumn: React.FC<OutputColumnProps> = ({
 
   return (
     <div className="column output-column">
-      <h2>Output</h2>
+      <div className="output-header">
+        <h2>Output</h2>
+        {isLoading && <LoadingDots />}
+      </div>
       
       <div className="output-language-selector">
         <label htmlFor="output-lang">Output Language:</label>
@@ -41,7 +56,13 @@ const OutputColumn: React.FC<OutputColumnProps> = ({
       </div>
       
       <div className="output-display">
-        {translatedText || "Translation will appear here..."}
+        {isLoading ? (
+          <div className="loading-message">
+            <span>Translating...</span>
+          </div>
+        ) : (
+          translatedText || "Translation will appear here..."
+        )}
       </div>
     </div>
   );
