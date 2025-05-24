@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { LANGUAGES } from '../constants/languages';
+import { DEFAULT_OUTPUT_LANGUAGE, LANGUAGES } from '../constants/languages';
 import './OutputColumn.css';
 
 interface OutputColumnProps {
@@ -11,7 +11,7 @@ const OutputColumn: React.FC<OutputColumnProps> = ({
   translatedText, 
   onLanguageChange 
 }) => {
-  const [outputLanguage, setOutputLanguage] = useState<string>(LANGUAGES[1]?.code || 'es');
+  const [outputLanguage, setOutputLanguage] = useState<string>(DEFAULT_OUTPUT_LANGUAGE);
 
   const handleLanguageChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const newLanguage = event.target.value;

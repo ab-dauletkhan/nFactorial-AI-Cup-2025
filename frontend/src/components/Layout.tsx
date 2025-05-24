@@ -7,7 +7,7 @@ import './Layout.css';
 const Layout: React.FC = () => {
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
-  const [outputLanguage, setOutputLanguage] = useState<string>('es');
+  const [_, setOutputLanguage] = useState<string>('en');
 
   const connectSocket = useCallback(() => {
     if (!socket.connected) {

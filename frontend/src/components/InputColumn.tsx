@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { socket } from '../socket';
 import { LANGUAGES, DEFAULT_INPUT_LANGUAGE } from '../constants/languages';
 import './InputColumn.css';
@@ -11,19 +11,34 @@ const InputColumn: React.FC<InputColumnProps> = ({ onTextChange }) => {
   const [inputText, setInputText] = useState<string>('');
   const [inputLanguages, setInputLanguages] = useState<string[]>([DEFAULT_INPUT_LANGUAGE]);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
+  const debounceTimeoutRef = useRef<number | null>(null);
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
     setInputText(newText);
-    
-    if (socket.connected) {
-      socket.emit('sendText', { text: newText, languages: inputLanguages });
-    } else {
-      console.warn("Socket not connected. Text not sent.");
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
-    
-    onTextChange?.(newText, inputLanguages);
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (socket.connected) {
+        socket.emit('sendText', { text: newText, languages: inputLanguages });
+      } else {
+        console.warn("Socket not connected. Text not sent.");
+      }
+      onTextChange?.(newText, inputLanguages);
+    }, 1000);
+
   }, [inputLanguages, onTextChange]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const addLanguage = useCallback((langCode: string) => {
     setInputLanguages(prev => {
