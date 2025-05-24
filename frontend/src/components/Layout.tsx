@@ -7,7 +7,7 @@ import './Layout.css';
 const Layout: React.FC = () => {
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
-  const [_, setOutputLanguage] = useState<string>('en');
+  const [outputLanguage, setOutputLanguage] = useState<string>('en');
 
   const connectSocket = useCallback(() => {
     if (!socket.connected) {
@@ -76,7 +76,10 @@ const Layout: React.FC = () => {
       </div>
       
       <div className="layout-container">
-        <InputColumn onTextChange={handleTextChange} />
+        <InputColumn 
+          onTextChange={handleTextChange} 
+          targetLanguage={outputLanguage}
+        />
         <OutputColumn 
           translatedText={translatedText} 
           onLanguageChange={handleLanguageChange}

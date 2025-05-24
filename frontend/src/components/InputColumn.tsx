@@ -5,9 +5,10 @@ import './InputColumn.css';
 
 interface InputColumnProps {
   onTextChange?: (text: string, languages: string[]) => void;
+  targetLanguage?: string;
 }
 
-const InputColumn: React.FC<InputColumnProps> = ({ onTextChange }) => {
+const InputColumn: React.FC<InputColumnProps> = ({ onTextChange, targetLanguage }) => {
   const [inputText, setInputText] = useState<string>('');
   const [inputLanguages, setInputLanguages] = useState<string[]>([DEFAULT_INPUT_LANGUAGE]);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
@@ -23,7 +24,11 @@ const InputColumn: React.FC<InputColumnProps> = ({ onTextChange }) => {
 
     debounceTimeoutRef.current = setTimeout(() => {
       if (socket.connected) {
-        socket.emit('sendText', { text: newText, languages: inputLanguages });
+        socket.emit('sendText', { 
+          text: newText, 
+          languages: inputLanguages,
+          targetLanguage: targetLanguage || 'en'
+        });
       } else {
         console.warn("Socket not connected. Text not sent.");
       }
