@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const SERVER_URL = "https://n-factorial-ai-cup-2025-mi1c.vercel.app/" || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
 export const socket = io(SERVER_URL, {
   autoConnect: false, // Explicitly connect when needed
