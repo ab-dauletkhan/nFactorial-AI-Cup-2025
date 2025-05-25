@@ -11,12 +11,17 @@ export const IS_PROD = NODE_ENV === 'production';
 export const CLIENT_URLS = IS_PROD 
   ? [
       'https://n-factorial-ai-cup-2025-wheat.vercel.app',
-      'https://n-factorial-ai-cup-2025-wheat.vercel.app:443'
+      'https://n-factorial-ai-cup-2025-wheat.vercel.app:443',
+      'wss://n-factorial-ai-cup-2025-wheat.vercel.app',
+      'wss://n-factorial-ai-cup-2025-wheat.vercel.app:443'
     ]
   : [
       'http://localhost:3000',
-      'http://localhost:5173', // Vite default dev port
-      'http://localhost:5174'  // Vite fallback port
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'ws://localhost:3000',
+      'ws://localhost:5173',
+      'ws://localhost:5174'
     ];
 
 // Original OpenAI API Key (primarily for translation)

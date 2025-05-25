@@ -12,16 +12,17 @@ console.log('Connecting to backend:', { BACKEND_URL, WS_URL });
 
 export const socket: Socket = io(BACKEND_URL, {
   autoConnect: true,
-  transports: ['websocket', 'polling'] as const,
-  path: '/socket.io', // Explicitly set the socket.io path
+  transports: ['polling', 'websocket'] as const,
+  path: '/socket.io',
   reconnection: true,
-  reconnectionAttempts: Infinity,
+  reconnectionAttempts: 5,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   timeout: 20000,
   forceNew: true,
   withCredentials: true,
-  secure: import.meta.env.PROD // Use secure connection in production
+  secure: import.meta.env.PROD,
+  rejectUnauthorized: false
 });
 
 // Socket event logging
@@ -30,7 +31,8 @@ socket.on('connect', () => {
   console.log('Socket connection details:', {
     connected: socket.connected,
     disconnected: socket.disconnected,
-    transport: socket.io.engine?.transport?.name
+    transport: socket.io.engine?.transport?.name,
+    url: BACKEND_URL
   });
 });
 
