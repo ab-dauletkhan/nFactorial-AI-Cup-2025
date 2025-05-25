@@ -13,8 +13,8 @@ export const LEMONFOX_API_KEY = process.env.LEMONFOX_API_KEY;
 export const LEMONFOX_BASE_URL = "https://api.lemonfox.ai/v1"; // As specified
 
 // Notation Service Configuration (for language mapping)
-export const NOTATION_API_KEY = process.env.NOTATION_API_KEY || OPENAI_API_KEY;
-export const NOTATION_API_BASE_URL = process.env.NOTATION_API_BASE_URL; // Optional
+export const NOTATION_API_KEY = process.env.GROQ_API_KEY || OPENAI_API_KEY;
+export const NOTATION_API_BASE_URL = process.env.GROQ_API_BASE_URL; // Optional
 
 // You can add a check here to ensure critical keys are present if needed
 if (!OPENAI_API_KEY) {

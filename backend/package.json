@@ -10,6 +10,9 @@
   "peerDependencies": {
     "typescript": "^5"
   },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist"
+  },
   "dependencies": {
     "@types/express": "^5.0.2",
     "dotenv": "^16.5.0",
