@@ -1,16 +1,14 @@
 import { io, type Socket } from 'socket.io-client';
 
 // Determine server URL based on environment
-const BACKEND_URL = import.meta.env.PROD 
-  ? "https://n-factorial-ai-cup-2025-wheat.vercel.app"
-  : "http://localhost:3001";
+const BACKEND_URL = "https://n-factorial-ai-cup-2025-mi1c.vercel.app";
 
 console.log('Connecting to backend:', { BACKEND_URL });
 
 export const socket: Socket = io(BACKEND_URL, {
   autoConnect: true,
   transports: ['polling', 'websocket'] as const,
-  path: '/socket.io/',  // Added trailing slash
+  path: '/socket.io',  // Removed trailing slash
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
@@ -18,7 +16,7 @@ export const socket: Socket = io(BACKEND_URL, {
   timeout: 20000,
   forceNew: true,
   withCredentials: true,
-  secure: import.meta.env.PROD,
+  secure: true, // Always use secure connection in production
   rejectUnauthorized: false,
   extraHeaders: {
     "Access-Control-Allow-Credentials": "true"
@@ -51,6 +49,7 @@ socket.on('connect_error', (error: Error) => {
     transport: socket.io.engine?.transport?.name,
     url: BACKEND_URL
   });
+  
   // Attempt to reconnect with polling if websocket fails
   const manager = socket.io;
   if (manager?.opts.transports) {
