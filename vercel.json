@@ -9,7 +9,23 @@
   "routes": [
     {
       "src": "/socket.io/(.*)",
-      "dest": "backend/src/index.ts"
+      "dest": "backend/src/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://n-factorial-ai-cup-2025-wheat.vercel.app",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Credentials": "true"
+      }
+    },
+    {
+      "src": "/socket.io",
+      "dest": "backend/src/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://n-factorial-ai-cup-2025-wheat.vercel.app",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/(.*)",

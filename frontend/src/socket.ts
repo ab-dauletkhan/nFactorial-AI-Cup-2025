@@ -5,15 +5,12 @@ const BACKEND_URL = import.meta.env.PROD
   ? "https://n-factorial-ai-cup-2025-wheat.vercel.app"
   : "http://localhost:3001";
 
-// For WebSocket connection
-const WS_URL = BACKEND_URL.replace(/^http/, 'ws').replace(/^https/, 'wss');
-
-console.log('Connecting to backend:', { BACKEND_URL, WS_URL });
+console.log('Connecting to backend:', { BACKEND_URL });
 
 export const socket: Socket = io(BACKEND_URL, {
   autoConnect: true,
   transports: ['polling', 'websocket'] as const,
-  path: '/socket.io',
+  path: '/socket.io/',  // Added trailing slash
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
@@ -22,7 +19,10 @@ export const socket: Socket = io(BACKEND_URL, {
   forceNew: true,
   withCredentials: true,
   secure: import.meta.env.PROD,
-  rejectUnauthorized: false
+  rejectUnauthorized: false,
+  extraHeaders: {
+    "Access-Control-Allow-Credentials": "true"
+  }
 });
 
 // Socket event logging
