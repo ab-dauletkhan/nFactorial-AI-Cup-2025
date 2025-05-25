@@ -44,7 +44,7 @@ const stripLanguageTags = (text: string): string => {
 };
 
 const standardizeLanguageTags = (text: string): string => {
-  return text.replace(/\[\[([a-zA-Z]{2,3}(?::[a-zA-Z0-9_-]+)?)\]\]/g, (_, langCode) => {
+  return text.replace(/\[\[([a-zA-Z]{2,3}(?::[a-zA-Z0-9_-]+)?)\]\]/gi, (_, langCode) => {
     return `[[${langCode.toUpperCase()}]]`;
   });
 };
@@ -64,22 +64,29 @@ const parseLanguageTags = (text: string): string[] => {
   return languages;
 };
 
-const preprocessTextForBackend = (text: string, verboseMode: boolean): { processedText: string, hasMeaningfulContent: boolean } => {
-  let processed = verboseMode ? standardizeLanguageTags(text) : stripLanguageTags(text);
-  
-  // Remove trailing empty tags in verbose mode
-  if (verboseMode) {
-    processed = processed.replace(/(\[\[[A-Z]{2,3}(?::[a-zA-Z0-9_-]+)?\]\]\s*)$/, (_, tag) => {
-      const textBeforeTag = processed.substring(0, processed.length - tag.length);
-      return stripLanguageTags(textBeforeTag) !== "" ? "" : tag;
-    });
+const preprocessTextForBackend = (text: string, isVerbose: boolean): { processedText: string; hasMeaningfulContent: boolean } => {
+  // Keep original text if it already has language tags and we're in verbose mode
+  if (isVerbose && text.includes('[[') && text.includes(']]')) {
+    const standardized = standardizeLanguageTags(text);
+    return {
+      processedText: standardized,
+      hasMeaningfulContent: stripLanguageTags(standardized).trim() !== ''
+    };
   }
-  
-  const effectiveContent = stripLanguageTags(processed);
-  const hasMeaningfulContent = effectiveContent.trim() !== '';
-  
-  return { processedText: processed, hasMeaningfulContent };
+
+  // For non-verbose mode or text without tags, strip all tags
+  const cleanText = stripLanguageTags(text);
+  return {
+    processedText: cleanText,
+    hasMeaningfulContent: cleanText.trim() !== ''
+  };
 };
+
+interface TextBuffer {
+  text: string;
+  sentText: string | null;
+  pendingText: string | null;
+}
 
 const InputColumn: React.FC<InputColumnProps> = ({ 
   onTextChange, 
@@ -95,6 +102,11 @@ const InputColumn: React.FC<InputColumnProps> = ({
   const [languageColorMap, setLanguageColorMap] = useState<Record<string, string>>({});
   const [detectedLanguages, setDetectedLanguages] = useState<string[]>([]);
   const debounceTimeoutRef = useRef<number | null>(null);
+  const [textBuffer, setTextBuffer] = useState<TextBuffer>({
+    text: '',
+    sentText: null,
+    pendingText: null
+  });
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -126,26 +138,22 @@ const InputColumn: React.FC<InputColumnProps> = ({
     return newColorMap;
   }, [languageColorMap]);
 
-  // Handle incoming annotated text data from server
+  // Update text buffer when annotated text is received
   useEffect(() => {
-    if (annotatedTextData?.text) {
-      console.log('InputColumn: Processing annotated text data:', annotatedTextData);
+    if (annotatedTextData?.text && textBuffer.sentText) {
+      const cleanAnnotatedText = verboseMode ? annotatedTextData.text : stripLanguageTags(annotatedTextData.text);
+      const newText = textBuffer.pendingText 
+        ? cleanAnnotatedText + textBuffer.pendingText
+        : cleanAnnotatedText;
       
-      if (verboseMode) {
-        // In verbose mode, replace input with annotated text
-        setInputText(annotatedTextData.text);
-        const languages = annotatedTextData.languages?.map(lang => lang.toUpperCase()) || [];
-        setDetectedLanguages(languages);
-        assignLanguageColors(languages);
-      } else {
-        // In default mode, strip tags and keep clean text
-        const cleanText = stripLanguageTags(annotatedTextData.text);
-        setInputText(cleanText);
-      }
-      
-      onClearAnnotatedText?.();
+      setInputText(newText);
+      setTextBuffer(prev => ({
+        text: newText,
+        sentText: cleanAnnotatedText,
+        pendingText: prev.pendingText
+      }));
     }
-  }, [annotatedTextData, verboseMode, assignLanguageColors, onClearAnnotatedText]);
+  }, [annotatedTextData, verboseMode, textBuffer.sentText, textBuffer.pendingText]);
 
   // Auto-detect languages in verbose mode
   const autoDetectLanguages = useCallback(async (text: string) => {
@@ -197,80 +205,98 @@ const InputColumn: React.FC<InputColumnProps> = ({
     }
   }, [verboseMode, assignLanguageColors, onLoadingChange]);
 
-  // Handle text input changes
+  // Handle text input changes with buffering
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
-    setInputText(newText);
-
-    // Update detected languages immediately in verbose mode for UI feedback
-    if (verboseMode) {
-      const standardizedText = standardizeLanguageTags(newText);
-      const languages = parseLanguageTags(standardizedText);
-      setDetectedLanguages(languages);
-      assignLanguageColors(languages);
+    const cursorPosition = event.target.selectionStart;
+    
+    // Process text based on verbose mode
+    const { processedText } = preprocessTextForBackend(newText, verboseMode);
+    setInputText(processedText);
+    
+    // Update text buffer
+    setTextBuffer(prev => ({
+      text: processedText,
+      sentText: prev.sentText,
+      pendingText: prev.sentText 
+        ? processedText.slice(prev.sentText.length) 
+        : processedText
+    }));
+    
+    // Restore cursor position
+    if (event.target === document.activeElement) {
+      setTimeout(() => {
+        event.target.setSelectionRange(cursorPosition, cursorPosition);
+      }, 0);
     }
 
-    // Clear existing debounce timeout
+    // Clear any existing debounce timeout
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Debounced processing for backend communication
-    debounceTimeoutRef.current = setTimeout(() => {
-      const { processedText, hasMeaningfulContent } = preprocessTextForBackend(newText, verboseMode);
-
-      if (!hasMeaningfulContent) {
-        onTextChange?.(processedText, [DEFAULT_INPUT_LANGUAGE]);
+    // Set new debounce timeout
+    debounceTimeoutRef.current = window.setTimeout(() => {
+      if (!socket.connected) {
+        console.warn("Socket not connected. Text not sent.");
         onLoadingChange?.(false);
         return;
       }
-      
-      const languagesForBackend = verboseMode && detectedLanguages.length > 0 
-        ? detectedLanguages 
-        : [DEFAULT_INPUT_LANGUAGE];
 
-      if (socket.connected) {
-        onLoadingChange?.(true);
-        socket.emit('sendText', { 
-          text: processedText, 
-          languages: languagesForBackend,
-          targetLanguage: targetLanguage || DEFAULT_OUTPUT_LANGUAGE
-        });
-      } else {
-        console.warn("Socket not connected. Text not sent.");
+      const { processedText: textToSend, hasMeaningfulContent } = preprocessTextForBackend(newText, false);
+      
+      if (!hasMeaningfulContent) {
         onLoadingChange?.(false);
+        return;
       }
-      
-      onTextChange?.(processedText, languagesForBackend);
+
+      // Update sent text in buffer
+      setTextBuffer(prev => ({
+        ...prev,
+        sentText: textToSend
+      }));
+
+      onLoadingChange?.(true);
+      socket.emit('sendText', {
+        text: textToSend,
+        languages: inputLanguages.length > 0 && !inputLanguages.includes(DEFAULT_INPUT_LANGUAGE)
+          ? inputLanguages
+          : ['auto'],
+        targetLanguage: targetLanguage || DEFAULT_OUTPUT_LANGUAGE
+      });
     }, DEBOUNCE_DELAY);
+  }, [verboseMode, socket.connected, onLoadingChange, targetLanguage, inputLanguages]);
 
-  }, [verboseMode, detectedLanguages, assignLanguageColors, onTextChange, targetLanguage, onLoadingChange]);
-
-  // Handle verbose mode toggle
+  // Handle verbose mode toggle with buffer consideration
   const handleVerboseModeToggle = useCallback(() => {
     const newVerboseMode = !verboseMode;
     setVerboseMode(newVerboseMode);
     
-    if (newVerboseMode) {
-      // Switching to verbose mode - detect languages if text exists
-      if (inputText.trim()) {
-        const { processedText } = preprocessTextForBackend(inputText, true);
-        if (processedText.includes('[[') && processedText.includes(']]')) {
-          const languages = parseLanguageTags(processedText);
-          setDetectedLanguages(languages);
-          assignLanguageColors(languages);
-          setInputText(processedText);
-        } else {
-          autoDetectLanguages(inputText);
-        }
-      }
-    } else {
-      // Switching to default mode - strip language tags
+    if (newVerboseMode && annotatedTextData?.text) {
+      const standardizedText = standardizeLanguageTags(annotatedTextData.text);
+      setInputText(standardizedText);
+      const languages = parseLanguageTags(standardizedText);
+      setDetectedLanguages(languages);
+      assignLanguageColors(languages);
+      
+      // Update buffer for verbose mode
+      setTextBuffer(prev => ({
+        text: standardizedText,
+        sentText: prev.sentText ? standardizeLanguageTags(prev.sentText) : null,
+        pendingText: prev.pendingText ? standardizeLanguageTags(prev.pendingText) : null
+      }));
+    } else if (!newVerboseMode) {
       const cleanText = stripLanguageTags(inputText);
       setInputText(cleanText);
-      setDetectedLanguages([]);
+      
+      // Update buffer for non-verbose mode
+      setTextBuffer(prev => ({
+        text: cleanText,
+        sentText: prev.sentText ? stripLanguageTags(prev.sentText) : null,
+        pendingText: prev.pendingText ? stripLanguageTags(prev.pendingText) : null
+      }));
     }
-  }, [verboseMode, inputText, autoDetectLanguages, assignLanguageColors]);
+  }, [verboseMode, inputText, annotatedTextData, assignLanguageColors]);
 
   // Render highlighted text for verbose mode
   const renderHighlightedText = useCallback((text: string) => {
@@ -333,8 +359,6 @@ const InputColumn: React.FC<InputColumnProps> = ({
     if (langCode === DEFAULT_INPUT_LANGUAGE) return 'Auto';
     return LANGUAGES.find(l => l.code === langCode)?.name || langCode;
   }, []);
-
-// Remove duplicate declaration since it's already declared at the end of the file
 
   const sendAudioToBackend = async (audioBlob: Blob) => {
     setIsTranscribing(true);

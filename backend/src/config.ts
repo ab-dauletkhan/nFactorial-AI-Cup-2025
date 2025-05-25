@@ -3,7 +3,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const PORT = process.env.PORT || '3001';
-export const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+
+// Allow multiple client URLs for different environments
+export const CLIENT_URLS = [
+  'https://n-factorial-ai-cup-2025-wheat.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173' // Vite default dev port
+];
 
 // Original OpenAI API Key (primarily for translation)
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;

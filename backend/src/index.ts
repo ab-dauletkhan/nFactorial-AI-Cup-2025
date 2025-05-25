@@ -2,31 +2,42 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { PORT, CLIENT_URL } from './config.js';
+import { PORT, CLIENT_URLS } from './config.js';
 import { processTranslation, mockTranslate, mapLanguages, parseLanguagesFromMappedText } from './translation.js';
 import { transcribeAudio } from './transcription.js';
 import multer from 'multer';
 
 const app = express();
 
-// Middleware for JSON body parsing (if not already present for other routes)
+// Middleware for JSON body parsing
 app.use(express.json());
 
-// Multer setup for handling file uploads (in-memory storage for this example)
+// Multer setup for handling file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 const httpServer = createServer(app);
 
+// Configure Socket.IO with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: CLIENT_URL,
-    methods: ["GET", "POST"]
-  }
-} as any);
+    origin: CLIENT_URLS,
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 
+// Health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.send('Mixed-Language Translator Server is running!');
+});
+
+// Error handling middleware
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // New endpoint for audio transcription
@@ -49,6 +60,7 @@ app.post('/api/transcribe', upload.single('audioFile'), async (req: Request, res
   }
 });
 
+// Socket connection handling
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
@@ -87,7 +99,6 @@ io.on('connection', (socket) => {
         // Mock logic for annotation and translation
         mappedTextForClient = text.includes('[[') ? text.replace(/\[\[([a-zA-Z]{2,3}(?::[a-zA-Z0-9_-]+)?)\]\]/g, (_m: string, lc: string) => `[[${lc.toUpperCase()}]]`) : `[[EN]]${text}`;
         detectedLanguagesForClient = parseLanguagesFromMappedText(mappedTextForClient);
-        // Simulate a delay for mock translation to allow frontend to process annotation first
         translatedText = `[MOCK TRANSLATION TO ${targetLanguage.toUpperCase()}] ${mockTranslate(text)}`;
       }
       
@@ -97,10 +108,7 @@ io.on('connection', (socket) => {
         detectedLanguages: detectedLanguagesForClient
       });
 
-      // Then emit translated text (add a small delay for mock to simulate separate processing)
-      if (!process.env.OPENAI_API_KEY) {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for mock
-      }
+      // Then emit translated text
       socket.emit('receiveTranslation', translatedText);
       
     } catch (error) {
@@ -117,12 +125,10 @@ io.on('connection', (socket) => {
         socket.emit('languageDetected', { taggedText: '' });
         return;
       }
-      // For auto-detection, languages array can be empty or ['auto']
       const mappedText = await mapLanguages(text, ['auto']);
       socket.emit('languageDetected', { taggedText: mappedText });
     } catch (error) {
       console.error('Language detection error:', error);
-      // Optionally emit an error event to the client
       socket.emit('languageDetectionError', 'Failed to detect languages.');
     }
   });
@@ -136,8 +142,9 @@ io.on('connection', (socket) => {
   });
 });
 
+// Start server
 httpServer.listen(PORT, () => {
   console.log(`Mixed-Language Translator Server listening on *:${PORT}`);
-  console.log(`CORS enabled for: ${CLIENT_URL}`);
+  console.log(`CORS enabled for:`, CLIENT_URLS);
   console.log(`OpenAI integration: ${process.env.OPENAI_API_KEY ? 'ENABLED' : 'DISABLED (using mock)'}`);
 });
