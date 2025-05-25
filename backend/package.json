@@ -5,14 +5,17 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "^1.2.14",
-    "@types/multer": "^1.4.12"
+    "@types/multer": "^1.4.12",
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "vercel-build": "tsc"
   },
   "dependencies": {
     "@types/express": "^5.0.2",
