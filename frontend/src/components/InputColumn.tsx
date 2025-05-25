@@ -152,58 +152,11 @@ const InputColumn: React.FC<InputColumnProps> = ({
         sentText: cleanAnnotatedText,
         pendingText: prev.pendingText
       }));
-    }
-  }, [annotatedTextData, verboseMode, textBuffer.sentText, textBuffer.pendingText]);
 
-  // Auto-detect languages in verbose mode
-  const autoDetectLanguages = useCallback(async (text: string) => {
-    if (!verboseMode || !socket.connected) {
-      onLoadingChange?.(false);
-      return;
+      // Clear annotated text after processing
+      onClearAnnotatedText?.();
     }
-
-    const { processedText, hasMeaningfulContent } = preprocessTextForBackend(text, verboseMode);
-    if (!hasMeaningfulContent) {
-      onLoadingChange?.(false);
-      return;
-    }
-    
-    // If text already has tags, parse them locally
-    if (processedText.includes('[[') && processedText.includes(']]')) {
-      const languages = parseLanguageTags(processedText);
-      setDetectedLanguages(languages);
-      assignLanguageColors(languages);
-      onLoadingChange?.(false);
-      return;
-    }
-
-    try {
-      onLoadingChange?.(true);
-      socket.emit('detectLanguages', { text: processedText });
-      
-      const handleLanguageDetection = (data: { taggedText: string }) => {
-        const standardizedText = standardizeLanguageTags(data.taggedText);
-        setInputText(standardizedText);
-        const languages = parseLanguageTags(standardizedText);
-        setDetectedLanguages(languages);
-        assignLanguageColors(languages);
-        socket.off('languageDetected', handleLanguageDetection);
-        onLoadingChange?.(false);
-      };
-      
-      socket.on('languageDetected', handleLanguageDetection);
-      
-      // Timeout fallback
-      setTimeout(() => {
-        socket.off('languageDetected', handleLanguageDetection);
-        onLoadingChange?.(false);
-      }, 5000);
-      
-    } catch (error) {
-      console.error('Language detection error:', error);
-      onLoadingChange?.(false);
-    }
-  }, [verboseMode, assignLanguageColors, onLoadingChange]);
+  }, [annotatedTextData, verboseMode, textBuffer.sentText, textBuffer.pendingText, onClearAnnotatedText]);
 
   // Handle text input changes with buffering
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {

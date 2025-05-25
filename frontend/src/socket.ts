@@ -7,7 +7,7 @@ const SERVER_URL = import.meta.env.PROD
 
 export const socket: Socket = io(SERVER_URL, {
   autoConnect: false,
-  transports: ['websocket', 'polling'] as const, // Type assertion to const array
+  transports: ['websocket', 'polling'] as const,
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
@@ -31,8 +31,11 @@ socket.on('connect_error', (error: Error) => {
   console.error('WebSocket connection error:', error);
   // Attempt to reconnect with polling if websocket fails
   const manager = socket.io;
-  if (manager && manager.opts.transports?.includes('websocket')) {
-    console.log('Retrying with polling transport...');
-    manager.opts.transports = ['polling'];
+  if (manager?.opts.transports) {
+    const transports = manager.opts.transports as ('websocket' | 'polling')[];
+    if (transports.includes('websocket')) {
+      console.log('Retrying with polling transport...');
+      manager.opts.transports = ['polling'] as const;
+    }
   }
 }); 
