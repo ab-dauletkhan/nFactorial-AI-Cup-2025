@@ -69,7 +69,7 @@ const preprocessTextForBackend = (text: string, verboseMode: boolean): { process
   
   // Remove trailing empty tags in verbose mode
   if (verboseMode) {
-    processed = processed.replace(/(\[\[[A-Z]{2,3}(?::[a-zA-Z0-9_-]+)?\]\]\s*)$/, (match, tag) => {
+    processed = processed.replace(/(\[\[[A-Z]{2,3}(?::[a-zA-Z0-9_-]+)?\]\]\s*)$/, (_, tag) => {
       const textBeforeTag = processed.substring(0, processed.length - tag.length);
       return stripLanguageTags(textBeforeTag) !== "" ? "" : tag;
     });
