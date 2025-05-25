@@ -14,11 +14,23 @@ const Layout: React.FC = () => {
   const [currentSourceText, setCurrentSourceText] = useState<string>('');
   const [currentSourceLanguages, setCurrentSourceLanguages] = useState<string[]>([DEFAULT_INPUT_LANGUAGE]);
   const previousOutputLanguageRef = useRef<string>(outputLanguage);
+  const reconnectTimeoutRef = useRef<number | null>(null);
 
   const connectSocket = useCallback(() => {
     if (!socket.connected) {
       console.log('Layout: Attempting to connect socket...');
       socket.connect();
+
+      // Set up a reconnection timeout
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+      }
+      reconnectTimeoutRef.current = window.setTimeout(() => {
+        if (!socket.connected) {
+          console.log('Layout: Connection timeout, retrying...');
+          socket.disconnect().connect(); // Force a fresh connection
+        }
+      }, 5000);
     }
   }, []);
 
@@ -32,17 +44,31 @@ const Layout: React.FC = () => {
     setOutputLanguage(newTargetLanguage);
   }, []);
 
+  // Initial connection attempt
   useEffect(() => {
     connectSocket();
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [connectSocket]);
 
+  // Socket event handlers
+  useEffect(() => {
     const onConnect = () => {
       setIsConnected(true);
       console.log('Layout: Socket connected successfully', socket.id);
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     };
 
     const onDisconnect = (reason: string) => {
       setIsConnected(false);
       console.log('Layout: Socket disconnected', reason);
+      connectSocket(); // Try to reconnect immediately
     };
 
     const onReceiveTranslation = (text: string) => {
@@ -67,8 +93,10 @@ const Layout: React.FC = () => {
       console.error('Layout: Socket connection error:', error);
       setIsConnected(false);
       setIsLoading(false);
+      connectSocket(); // Try to reconnect on error
     };
 
+    // Set up event listeners
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('receiveTranslation', onReceiveTranslation);
@@ -76,6 +104,7 @@ const Layout: React.FC = () => {
     socket.on('connect_error', onConnectError);
     socket.on('receiveAnnotatedText', onReceiveAnnotatedText);
 
+    // Cleanup event listeners
     return () => {
       console.log('Layout: Cleaning up socket listeners');
       socket.off('connect', onConnect);
@@ -87,6 +116,7 @@ const Layout: React.FC = () => {
     };
   }, [connectSocket]);
 
+  // Handle language changes
   useEffect(() => {
     if (previousOutputLanguageRef.current !== outputLanguage && currentSourceText.trim() && socket.connected) {
       if (translatedText || isLoading) {
@@ -105,7 +135,7 @@ const Layout: React.FC = () => {
       }
     }
     previousOutputLanguageRef.current = outputLanguage;
-  }, [outputLanguage, currentSourceText, currentSourceLanguages, translatedText, isLoading, socket.connected]);
+  }, [outputLanguage, currentSourceText, currentSourceLanguages, translatedText, isLoading]);
 
   const handleLoadingChange = useCallback((loading: boolean) => {
     setIsLoading(loading);
@@ -115,6 +145,14 @@ const Layout: React.FC = () => {
     <>
       <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
         {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+        {!isConnected && (
+          <button 
+            onClick={connectSocket}
+            className="reconnect-button"
+          >
+            Reconnect
+          </button>
+        )}
       </div>
       
       <div className="layout-container">

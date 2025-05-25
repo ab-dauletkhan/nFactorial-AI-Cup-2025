@@ -14,6 +14,9 @@
   font-size: 0.8rem;
   font-weight: bold;
   z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .connection-status.connected {
@@ -26,4 +29,23 @@
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
+}
+
+.reconnect-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reconnect-button:hover {
+  background-color: #c82333;
+}
+
+.reconnect-button:active {
+  background-color: #bd2130;
 }
