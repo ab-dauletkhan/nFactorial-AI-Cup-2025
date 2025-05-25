@@ -2,7 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 
 // Determine server URL based on environment
 const BACKEND_URL = import.meta.env.PROD 
-  ? "https://n-factorial-ai-cup-2025-mi1c.vercel.app"
+  ? "https://n-factorial-ai-cup-2025-wheat.vercel.app"
   : "http://localhost:3001";
 
 // For WebSocket connection
