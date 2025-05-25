@@ -6,8 +6,15 @@ import { PORT, CLIENT_URLS } from './config.js';
 import { processTranslation, mockTranslate, mapLanguages, parseLanguagesFromMappedText } from './translation.js';
 import { transcribeAudio } from './transcription.js';
 import multer from 'multer';
+import cors from 'cors';
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors({
+  origin: CLIENT_URLS,
+  credentials: true
+}));
 
 // Middleware for JSON body parsing
 app.use(express.json());
@@ -20,18 +27,31 @@ const httpServer = createServer(app);
 
 // Configure Socket.IO with CORS
 const io = new Server(httpServer, {
+  path: '/socket.io',
   cors: {
     origin: CLIENT_URLS,
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'],
+  allowEIO3: true // Enable compatibility with Socket.IO v3 clients
 });
 
 // Health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.send('Mixed-Language Translator Server is running!');
+});
+
+// Socket connection status endpoint
+app.get('/status', (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    connections: io.engine.clientsCount,
+    uptime: process.uptime()
+  });
 });
 
 // Error handling middleware
@@ -62,7 +82,12 @@ app.post('/api/transcribe', upload.single('audioFile'), async (req: Request, res
 
 // Socket connection handling
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  console.log('A user connected:', {
+    id: socket.id,
+    transport: socket.conn.transport.name,
+    remoteAddress: socket.handshake.address,
+    headers: socket.handshake.headers
+  });
 
   socket.on('sendText', async (data: any) => {
     console.log(`Received data from ${socket.id}:`, data);
@@ -134,11 +159,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log('User disconnected:', {
+      id: socket.id,
+      transport: socket.conn.transport.name
+    });
   });
 
   socket.on('connect_error', (err: Error) => {
-    console.error("Connection error:", err.message);
+    console.error("Connection error:", {
+      id: socket.id,
+      error: err.message,
+      transport: socket.conn.transport?.name
+    });
   });
 });
 

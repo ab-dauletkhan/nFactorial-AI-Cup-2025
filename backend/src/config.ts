@@ -2,14 +2,22 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Server configuration
 export const PORT = process.env.PORT || '3001';
+export const NODE_ENV = process.env.NODE_ENV || 'development';
+export const IS_PROD = NODE_ENV === 'production';
 
 // Allow multiple client URLs for different environments
-export const CLIENT_URLS = [
-  'https://n-factorial-ai-cup-2025-wheat.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173' // Vite default dev port
-];
+export const CLIENT_URLS = IS_PROD 
+  ? [
+      'https://n-factorial-ai-cup-2025-wheat.vercel.app',
+      'https://n-factorial-ai-cup-2025-wheat.vercel.app:443'
+    ]
+  : [
+      'http://localhost:3000',
+      'http://localhost:5173', // Vite default dev port
+      'http://localhost:5174'  // Vite fallback port
+    ];
 
 // Original OpenAI API Key (primarily for translation)
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -32,3 +40,14 @@ if (!LEMONFOX_API_KEY) {
 if (!NOTATION_API_KEY) {
   console.warn("Warning: NOTATION_API_KEY is not set. Language notation might fall back or use mocks.");
 }
+
+// Log configuration on startup
+console.log('Server configuration:', {
+  NODE_ENV,
+  IS_PROD,
+  PORT,
+  CLIENT_URLS,
+  hasOpenAI: !!OPENAI_API_KEY,
+  hasLemonFox: !!LEMONFOX_API_KEY,
+  hasNotation: !!NOTATION_API_KEY
+});
