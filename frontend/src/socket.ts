@@ -15,12 +15,9 @@ export const socket: Socket = io(BACKEND_URL, {
   reconnectionDelayMax: 5000,
   timeout: 20000,
   forceNew: true,
-  withCredentials: true,
+  withCredentials: false,
   secure: true, // Always use secure connection in production
-  rejectUnauthorized: false,
-  extraHeaders: {
-    "Access-Control-Allow-Credentials": "true"
-  }
+  rejectUnauthorized: false
 });
 
 // Socket event logging

@@ -10,9 +10,9 @@ import cors from 'cors';
 
 const app = express();
 
-// Enable CORS for all routes
+// Enable CORS for all routes with no restrictions
 app.use(cors({
-  origin: CLIENT_URLS,
+  origin: '*',
   credentials: true
 }));
 
@@ -25,19 +25,19 @@ const upload = multer({ storage: storage });
 
 const httpServer = createServer(app);
 
-// Configure Socket.IO with CORS
+// Configure Socket.IO with no CORS restrictions
 const io = new Server(httpServer, {
   path: '/socket.io',
   cors: {
-    origin: CLIENT_URLS,
-    methods: ["GET", "POST"],
+    origin: '*',
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["*"]
   },
   pingTimeout: 60000,
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
-  allowEIO3: true // Enable compatibility with Socket.IO v3 clients
+  allowEIO3: true
 });
 
 // Health check endpoint
